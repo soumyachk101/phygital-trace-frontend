@@ -1,0 +1,63 @@
+[
+  {
+    "inputs": [
+      { "name": "_combinedHash", "type": "bytes32" },
+      { "name": "_ipfsCid", "type": "string" },
+      { "name": "_signature", "type": "bytes" },
+      { "name": "_publicKey", "type": "bytes" }
+    ],
+    "name": "registerCertificate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "name": "_combinedHash", "type": "bytes32" }],
+    "name": "getCertificate",
+    "outputs": [
+      {
+        "components": [
+          { "name": "combinedHash", "type": "bytes32" },
+          { "name": "ipfsCid", "type": "string" },
+          { "name": "issuer", "type": "address" },
+          { "name": "blockNumber", "type": "uint256" },
+          { "name": "isRevoked", "type": "bool" }
+        ],
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "name": "_combinedHash", "type": "bytes32" },
+      { "name": "_reason", "type": "string" }
+    ],
+    "name": "revokeCertificate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "combinedHash", "type": "bytes32" },
+      { "indexed": true, "name": "issuer", "type": "address" },
+      { "indexed": false, "name": "ipfsCid", "type": "string" },
+      { "indexed": false, "name": "blockNumber", "type": "uint256" }
+    ],
+    "name": "CertificateRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "combinedHash", "type": "bytes32" },
+      { "indexed": false, "name": "reason", "type": "string" },
+      { "indexed": false, "name": "blockNumber", "type": "uint256" }
+    ],
+    "name": "CertificateRevoked",
+    "type": "event"
+  }
+]

@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CertificateStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REVOKED
+}
+
+enum UserTier {
+  FREE
+  PROFESSIONAL
+  ORGANIZATION
+  ENTERPRISE
+}
+
+enum AuditAction {
+  CREATE_USER
+  UPDATE_USER
+  DELETE_USER
+  CREATE_CERTIFICATE
+  CONFIRM_CERTIFICATE
+  FAIL_CERTIFICATE
+  REVOKE_CERTIFICATE
+  REGISTER_PUBLIC_KEY
+  REVOKE_PUBLIC_KEY
+  CREATE_WEBHOOK
+  DELETE_WEBHOOK
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  displayName   String   @map("display_name")
+  handle        String?  @unique
+  bio           String?
+  tier          UserTier @default(FREE)
+  emailVerified Boolean  @default(false) @map("email_verified")
+  walletAddress String?  @unique @map("wallet_address")
+  twitterUrl    String?  @map("twitter_url")
+  websiteUrl    String?  @map("website_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  certificates Certificate[]
+  publicKeys   UserPublicKey[]
+  webhooks     Webhook[]
+  auditLogs    AuditLog[]
+  revocations  Revocation[]
+
+  @@map("users")
+}
+
+model Certificate {
+  id              String            @id @default(cuid())
+  userId          String            @map("user_id")
+  imageHash       String            @unique @map("image_hash")
+  sensorHash      String            @map("sensor_hash")
+  combinedHash    String            @unique @map("combined_hash")
+  ipfsCid         String?           @map("ipfs_cid")
+  txHash          String?           @map("tx_hash")
+  blockNumber     Int?              @map("block_number")
+  status          CertificateStatus @default(PENDING)
+  latApprox       Decimal?          @map("lat_approx") @db.Decimal(10, 3)
+  lngApprox       Decimal?          @map("lng_approx") @db.Decimal(10, 3)
+  city            String?
+  country         String?
+  deviceModel     String?           @map("device_model")
+  deviceOs        String?           @map("device_os")
+  appVersion      String?           @map("app_version")
+  hasGps          Boolean           @default(false) @map("has_gps")
+  hasAccelerometer Boolean          @default(false) @map("has_accelerometer")
+  hasGyroscope    Boolean           @default(false) @map("has_gyroscope")
+  hasBarometer    Boolean           @default(false) @map("has_barometer")
+  hasLight        Boolean           @default(false) @map("has_light")
+  wifiCount       Int               @default(0) @map("wifi_count")
+  cellTowerCount  Int               @default(0) @map("cell_tower_count")
+  publicKey       String            @map("public_key")
+  signature       String
+  captureTime     DateTime          @map("capture_time")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id])
+  revocation Revocation?
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_certificates_user_id_created_at")
+  @@index([status], map: "idx_certificates_status")
+  @@index([captureTime], map: "idx_certificates_capture_time")
+  @@map("certificates")
+}
+
+model Revocation {
+  id              String   @id @default(cuid())
+  certificateId   String   @unique @map("certificate_id")
+  revokedByUserId String   @map("revoked_by_user_id")
+  reason          String
+  txHash          String?  @map("tx_hash")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  certificate Certificate @relation(fields: [certificateId], references: [id])
+  revokedBy   User        @relation(fields: [revokedByUserId], references: [id])
+
+  @@map("revocations")
+}
+
+model UserPublicKey {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  publicKey   String    @unique @map("public_key")
+  deviceModel String    @map("device_model")
+  attestation String?
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  revokedAt   DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_public_keys")
+}
+
+model Webhook {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  url       String
+  secret    String
+  events    String[]
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user       User              @relation(fields: [userId], references: [id])
+  deliveries WebhookDelivery[]
+
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id           String   @id @default(cuid())
+  webhookId    String   @map("webhook_id")
+  event        String
+  payload      Json
+  httpStatus   Int?     @map("http_status")
+  attemptCount Int      @default(0) @map("attempt_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  webhook Webhook @relation(fields: [webhookId], references: [id])
+
+  @@map("webhook_deliveries")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String?     @map("user_id")
+  action     AuditAction
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  changes    Json?
+  ipAddress  String?     @map("ip_address")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId, createdAt(sort: Desc)], map: "idx_audit_logs_entity")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_audit_logs_user")
+  @@map("audit_logs")
+}
